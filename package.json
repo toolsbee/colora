@@ -1,6 +1,6 @@
 {
   "name": "@toolsbee/colora",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Tiny modern CSS color parser & converter (OKLCH-first).",
   "license": "MIT",
   "repository": {
@@ -11,12 +11,10 @@
   "bugs": {
     "url": "https://github.com/toolsbee/colora/issues"
   },
-
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -24,15 +22,16 @@
       "require": "./dist/index.cjs"
     }
   },
-
-  "files": ["dist", "README.md", "LICENSE"],
-
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup",
     "test": "vitest",
     "prepublishOnly": "npm run build"
   },
-
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
