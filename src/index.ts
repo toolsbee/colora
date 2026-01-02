@@ -1,3 +1,7 @@
+// src/index.ts
+import { rgbToOklab, oklabToOklch, oklchToOklab, oklabToRgb } from "./oklab";
+import { parseOklchCss, formatOklchCss } from "./oklch_css";
+
 export type Rgb = { r: number; g: number; b: number; a: number };
 export type Oklch = { l: number; c: number; h: number; a: number };
 
@@ -9,18 +13,29 @@ export type Color = {
 };
 
 class ParsedColor implements Color {
-  constructor(private readonly rgb: Rgb, private readonly oklch?: Oklch) {}
+  constructor(
+    private rgb?: Rgb,
+    private oklch?: Oklch,
+    private prefer: "rgb" | "oklch" = "rgb"
+  ) {}
 
   toRgb(): Rgb {
-    return { ...this.rgb };
+    if (this.rgb) return { ...this.rgb };
+
+    if (this.oklch) {
+      const lab = oklchToOklab(this.oklch);
+      const rgb = oklabToRgb(lab, this.oklch.a);
+      this.rgb = rgb;
+      return { ...rgb };
+    }
+
+    throw new Error("Color has no RGB representation.");
   }
 
   toHex(): string {
-    const { r, g, b, a } = this.rgb;
-
+    const { r, g, b, a } = this.toRgb();
+    const to2 = (n: number) => Math.round(n).toString(16).padStart(2, "0").toUpperCase();
     const clamp255 = (n: number) => Math.max(0, Math.min(255, n));
-    const to2 = (n: number) =>
-      Math.round(n).toString(16).padStart(2, "0").toUpperCase();
 
     const rr = to2(clamp255(r));
     const gg = to2(clamp255(g));
@@ -32,21 +47,26 @@ class ParsedColor implements Color {
   }
 
   toOklch(): Oklch {
-    if (!this.oklch) throw new Error("OKLCH conversion not implemented yet.");
-    return { ...this.oklch };
+    if (this.oklch) return { ...this.oklch };
+
+    const rgb = this.toRgb();
+    const lab = rgbToOklab(rgb);
+    const lch = oklabToOklch(lab, rgb.a);
+    this.oklch = lch;
+    return { ...lch };
   }
 
   toCss(): string {
-    // v0: normalize to rgb() for now (css4 form)
-    const { r, g, b, a } = this.rgb;
+    if (this.prefer === "oklch") {
+      return formatOklchCss(this.toOklch());
+    }
+
+    const { r, g, b, a } = this.toRgb();
     const rr = Math.round(r);
     const gg = Math.round(g);
     const bb = Math.round(b);
-    const aa = clamp01(a);
-
-    return aa >= 1
-      ? `rgb(${rr} ${gg} ${bb})`
-      : `rgb(${rr} ${gg} ${bb} / ${trimFloat(aa)})`;
+    const aa = Math.max(0, Math.min(1, a));
+    return aa >= 1 ? `rgb(${rr} ${gg} ${bb})` : `rgb(${rr} ${gg} ${bb} / ${trimFloat(aa)})`;
   }
 }
 
@@ -59,15 +79,20 @@ function trimFloat(n: number): string {
   return s.replace(/\.?0+$/, "");
 }
 
-// v0: parse only hex + rgb() first, then we add oklch()
 export function parseColor(input: string): Color {
   const s = input.trim();
 
-  const hex = parseHex(s);
-  if (hex) return new ParsedColor(hex);
+  // oklch()
+  const lch = parseOklchCss(s);
+  if (lch) return new ParsedColor(undefined, lch, "oklch");
 
+  // hex
+  const hex = parseHex(s);
+  if (hex) return new ParsedColor(hex, undefined, "rgb");
+
+  // rgb()/rgba()
   const rgb = parseRgbCss(s);
-  if (rgb) return new ParsedColor(rgb);
+  if (rgb) return new ParsedColor(rgb, undefined, "rgb");
 
   throw new Error(`Unsupported color format: ${input}`);
 }
@@ -105,20 +130,17 @@ function parseHex(s: string): Rgb | null {
 }
 
 function parseRgbCss(s: string): Rgb | null {
-  // supports:
-  // rgb(1 2 3) / rgb(1 2 3 / .5) / rgb(1, 2, 3) / rgba(1,2,3,0.5)
+  // supports: rgb(1 2 3) / rgb(1 2 3 / .5) / rgb(1, 2, 3) / rgba(1,2,3,0.5)
   const fn = /^(rgba?)\((.*)\)$/i.exec(s);
   if (!fn) return null;
 
   const body = (fn[2] ?? "").trim();
   if (!body) return null;
 
-  // split by / for alpha (css4)
   const parts = body.split("/");
   const left = (parts[0] ?? "").trim();
   const alphaPart = parts.length > 1 ? (parts[1] ?? "").trim() : undefined;
 
-  // comma or space separated
   const nums = left.includes(",")
     ? left.split(",").map((x) => x.trim()).filter(Boolean)
     : left.split(/\s+/).map((x) => x.trim()).filter(Boolean);
