@@ -32,6 +32,12 @@ parseColor("rgb(10 20 30 / 0.5)").toHex();
 
 parseColor("oklch(62% 0.18 240 / 0.9)").toCss();
 // "oklch(62% 0.18 240 / 0.9)"
+
+parseColor("hsl(0 100% 50%)").toRgb();
+// { r: 255, g: 0, b: 0, a: 1 }
+
+parseColor("color(display-p3 1 0 0)").toHex();
+// "#FF0000" (Clamped to sRGB)
 ````
 
 ---
@@ -54,8 +60,10 @@ const color = parseColor("rgba(255, 0, 0, 0.25)");
 | --------- | ----------------------------------- | ------------------------ |
 | toRgb()   | Convert to sRGB with alpha          | { r, g, b, a }           |
 | toHex()   | Convert to hex with alpha if needed | "#RRGGBB" or "#RRGGBBAA" |
+| toHsl()   | Convert to HSL                      | { h, s, l, a }           |
+| toP3()    | Convert to Display P3               | { r, g, b, a }           |
 | toOklch() | Convert to OKLCH (perceptual)       | { l, c, h, a }           |
-| toCss()   | Normalized CSS output               | rgb(...) or oklch(...)   |
+| toCss()   | Normalized CSS output               | formatted string         |
 
 All conversions are bidirectional and preserve alpha.
 
@@ -90,7 +98,7 @@ parseColor("rgb(10 20 30 / .5000)").toCss();
 
 ---
 
-## Supported Formats (v0.1.x)
+## Supported Formats
 
 ### Hex
 
@@ -106,11 +114,25 @@ parseColor("rgb(10 20 30 / .5000)").toCss();
 * rgb(1, 2, 3)
 * rgba(1, 2, 3, 0.5)
 
+### HSL and HSLA
+
+* hsl(0 100% 50%)
+* hsl(0, 100%, 50%)
+* hsla(0, 100%, 50%, 0.5)
+
+### Display P3
+
+* color(display-p3 1 0 0)
+* color(display-p3 1 0 0 / 0.5)
+
 ### OKLCH
 
 * oklch(62% 0.18 240)
+* oklch(0.62 0.18 240)
 * oklch(62% 0.18 240 / 0.9)
 * Hue units supported: deg, rad, grad, turn
+
+> **Note**: Parsing is strictly spec-compliant. Percentages must use `%`. Alpha in modern syntax must use `/`.
 
 ---
 
@@ -123,27 +145,33 @@ parseColor("rgb(10 20 30 / .5000)").toCss();
     <pre id="out">Loading…</pre>
 
     <script type="module">
-      import { parseColor } from "https://cdn.jsdelivr.net/npm/@toolsbee/colora@0.1.0/dist/index.js";
+      import { parseColor } from "https://cdn.jsdelivr.net/npm/@toolsbee/colora@0.2.0/dist/index.js";
 
       const cHex  = parseColor("#0ea5e9");
       const cRgb  = parseColor("rgb(10 20 30 / 0.5)");
-      const cRgba = parseColor("rgba(255, 0, 0, 0.25)");
+      const cHsl  = parseColor("hsl(0 100% 50%)");
+      const cP3   = parseColor("color(display-p3 0 1 0)");
       const cOkl  = parseColor("oklch(62% 0.18 240 / 0.9)");
 
       document.getElementById("out").textContent = JSON.stringify(
         {
           // Hex input
           hex_to_rgb: cHex.toRgb(),
+          hex_to_hsl: cHex.toHsl(),
+          hex_to_p3:  cHex.toP3(),
           hex_to_oklch: cHex.toOklch(),
 
-          // RGB / RGBA to OKLCH
-          rgb_to_oklch: cRgb.toOklch(),
-          rgba_to_oklch: cRgba.toOklch(),
-
-          // RGB / RGBA normalization
-          rgb_to_hex: cRgb.toHex(),
+          // RGB normalization
           rgb_to_css: cRgb.toCss(),
-          rgba_to_css: cRgba.toCss(),
+          rgb_to_hex: cRgb.toHex(),
+
+          // HSL Input
+          hsl_to_rgb: cHsl.toRgb(),
+          hsl_to_css: cHsl.toCss(),
+
+          // P3 Input (Wide Gamut)
+          p3_to_rgb: cP3.toRgb(),
+          p3_raw:    cP3.toP3(),
 
           // OKLCH conversions
           oklch_to_css: cOkl.toCss(),

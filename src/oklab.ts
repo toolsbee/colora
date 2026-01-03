@@ -1,27 +1,22 @@
-// src/oklab.ts
 export type Rgb = { r: number; g: number; b: number; a: number };
 export type Oklab = { l: number; a: number; b: number };
 export type Oklch = { l: number; c: number; h: number; a: number };
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
-function srgbToLinear(u: number): number {
-  // u in [0..1]
+export function srgbToLinear(u: number): number {
   return u <= 0.04045 ? u / 12.92 : Math.pow((u + 0.055) / 1.055, 2.4);
 }
 
-function linearToSrgb(u: number): number {
-  // u can be outside [0..1] during conversion
+export function linearToSrgb(u: number): number {
   return u <= 0.0031308 ? 12.92 * u : 1.055 * Math.pow(u, 1 / 2.4) - 0.055;
 }
 
 export function rgbToOklab(rgb: Rgb): Oklab {
-  // sRGB (0..255) -> OKLab (D65)
   const r = srgbToLinear(clamp01(rgb.r / 255));
   const g = srgbToLinear(clamp01(rgb.g / 255));
   const b = srgbToLinear(clamp01(rgb.b / 255));
 
-  // linear sRGB -> LMS
   const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
   const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
   const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
@@ -38,7 +33,6 @@ export function rgbToOklab(rgb: Rgb): Oklab {
 }
 
 export function oklabToRgb(lab: Oklab, alpha = 1): Rgb {
-  // OKLab -> linear sRGB -> sRGB (0..255)
   const l_ = lab.l + 0.3963377774 * lab.a + 0.2158037573 * lab.b;
   const m_ = lab.l - 0.1055613458 * lab.a - 0.0638541728 * lab.b;
   const s_ = lab.l - 0.0894841775 * lab.a - 1.2914855480 * lab.b;
@@ -62,7 +56,6 @@ export function oklabToOklch(lab: Oklab, alpha = 1): Oklch {
   const c = Math.hypot(lab.a, lab.b);
   let h = Math.atan2(lab.b, lab.a) * (180 / Math.PI);
   if (h < 0) h += 360;
-  // If chroma is ~0, hue is technically undefined; normalize to 0
   if (c < 1e-12) h = 0;
 
   return { l: lab.l, c, h, a: clamp01(alpha) };

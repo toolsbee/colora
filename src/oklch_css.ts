@@ -1,4 +1,3 @@
-// src/oklch_css.ts
 import type { Oklch } from "./oklab";
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
@@ -37,7 +36,7 @@ function parseL(raw: string): number | null {
   const n = Number(t);
   if (!Number.isFinite(n)) return null;
 
-  return n > 1 ? clamp01(n / 100) : clamp01(n);
+  return clamp01(n);
 }
 
 function parseC(raw: string): number | null {
@@ -82,7 +81,7 @@ export function parseOklchCss(input: string): Oklch | null {
   const alphaPart = parts[1]?.trim();
 
   const toks = left.split(/\s+/).filter(Boolean);
-  if (toks.length < 3) return null;
+  if (toks.length !== 3) return null;
 
   const lTok = toks[0];
   const cTok = toks[1];
@@ -100,10 +99,6 @@ export function parseOklchCss(input: string): Oklch | null {
   let a = 1;
   if (alphaPart) {
     const av = parseAlpha(alphaPart);
-    if (av == null) return null;
-    a = av;
-  } else if (aTok) {
-    const av = parseAlpha(aTok);
     if (av == null) return null;
     a = av;
   }
